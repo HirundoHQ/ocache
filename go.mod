@@ -3,7 +3,7 @@ module github.com/osiguraj-lako/ocache
 go 1.26.1
 
 require (
-	github.com/olric-data/olric v0.7.3
+	github.com/olric-data/olric v0.7.4
 	github.com/osiguraj-lako/logging v0.0.1
 	google.golang.org/protobuf v1.36.11
 )
