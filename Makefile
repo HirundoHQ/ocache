@@ -1,4 +1,6 @@
 GO ?= go
+GOBIN_DIR := $(shell $(GO) env GOPATH)/bin
+GOLANGCI_LINT_VERSION := v2.13.2
 
 .PHONY: all build vet test lint govulncheck
 
@@ -14,9 +16,9 @@ test:
 	$(GO) test ./...
 
 lint:
-	@command -v golangci-lint >/dev/null 2>&1 || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $$($(GO) env GOPATH)/bin v2.13.1
-	golangci-lint run
+	@$(GOBIN_DIR)/golangci-lint version 2>/dev/null | grep -qF "version $(GOLANGCI_LINT_VERSION:v%=%) " || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(GOBIN_DIR) $(GOLANGCI_LINT_VERSION)
+	$(GOBIN_DIR)/golangci-lint run
 
 govulncheck:
-	@command -v govulncheck >/dev/null 2>&1 || $(GO) install golang.org/x/vuln/cmd/govulncheck@latest
-	govulncheck ./...
+	@test -x $(GOBIN_DIR)/govulncheck || GOBIN=$(GOBIN_DIR) $(GO) install golang.org/x/vuln/cmd/govulncheck@latest
+	$(GOBIN_DIR)/govulncheck ./...

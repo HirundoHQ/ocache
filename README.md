@@ -4,6 +4,12 @@
 
 This package provides a clean abstraction over Olric distributed cache with native support for Protocol Buffer messages. Proto marshalling is handled internally, keeping the API simple and idiomatic.
 
+## Installation
+
+```sh
+go get github.com/hirundohq/ocache
+```
+
 ## API
 
 ### GetProto
@@ -50,7 +56,7 @@ if !cache.GetProto(ctx, key, response) {
 
 ```go
 func (m *middleware) GetOffers(ctx context.Context, req *pb.Request) ([]*pb.Offer, error) {
-    cacheKey := m.cache.CreateKey("offers", olric.WithProtoMsg(req))
+    cacheKey := m.cache.CreateKey("offers", ocache.WithProtoMsg(req))
     
     // Try cache first
     wrapper := &pb.OffersWrapper{}
@@ -79,7 +85,7 @@ func (m *middleware) GetOffers(ctx context.Context, req *pb.Request) ([]*pb.Offe
 Creates deterministic cache keys from proto message content:
 
 ```go
-key := cache.CreateKey("prefix", olric.WithProtoMsg(request))
+key := cache.CreateKey("prefix", ocache.WithProtoMsg(request))
 ```
 
 Identical requests produce identical cache keys, maximizing cache hits.
@@ -89,7 +95,7 @@ Identical requests produce identical cache keys, maximizing cache hits.
 Creates cache keys from string parameters:
 
 ```go
-key := cache.CreateKey("prefix", olric.WithParams(userID))
+key := cache.CreateKey("prefix", ocache.WithParams(userID))
 ```
 
 ## Expiration Strategies

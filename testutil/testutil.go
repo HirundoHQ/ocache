@@ -105,7 +105,7 @@ func getFreePort() (int, error) {
 
 func AssertCachedValue[T protoreflect.ProtoMessage](
 	ctx context.Context,
-	t *testing.T,
+	t testing.TB,
 	cache *ocache.DMap,
 	cacheKey ocache.Key,
 	expectedResponse protoreflect.ProtoMessage,
@@ -113,7 +113,12 @@ func AssertCachedValue[T protoreflect.ProtoMessage](
 	var msg T // Constrained to proto.Message
 
 	// Peek the type inside T (as T= *SomeProtoMsgType)
-	msgType := reflect.TypeOf(msg).Elem()
+	rt := reflect.TypeOf(msg)
+	if rt == nil {
+		t.Errorf("type parameter T must be a concrete proto message type, not an interface")
+		return
+	}
+	msgType := rt.Elem()
 
 	// Make a new one, and throw it back into T
 	msg = reflect.New(msgType).Interface().(T)
@@ -122,6 +127,7 @@ func AssertCachedValue[T protoreflect.ProtoMessage](
 
 	if msgType != msgExpectedType {
 		t.Errorf("msg type not as expected, got: %s, expected: %s", msgType, msgExpectedType)
+		return
 	}
 
 	if !cache.GetProto(ctx, cacheKey, msg) {

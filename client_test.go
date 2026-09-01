@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	client "github.com/hirundohq/ocache"
+	"github.com/hirundohq/ocache"
 	"github.com/hirundohq/ocache/testutil"
 )
 
@@ -18,7 +18,7 @@ func TestClient(t *testing.T) {
 
 	t.Log("address:", db.Endpoint())
 
-	cl, err := client.New(db.Endpoint())
+	cl, err := ocache.New(db.Endpoint())
 	if err != nil {
 		t.Errorf("failed to create client: %v", err)
 	}

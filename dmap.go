@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -42,7 +43,7 @@ func (oc *Client) NewDMap(name string) (*DMap, error) {
 
 // CreateKey creates a cache key using the DMap name and the provided name and options.
 func (o *DMap) CreateKey(name string, opts ...KeyOption) Key {
-	if opts == nil {
+	if len(opts) == 0 {
 		return Key(strings.Join([]string{o.dm.Name(), name}, "_"))
 	}
 
@@ -52,6 +53,19 @@ func (o *DMap) CreateKey(name string, opts ...KeyOption) Key {
 	}
 
 	return Key(strings.Join([]string{o.dm.Name(), name, po.hash}, "_"))
+}
+
+// isKeyNotFound reports whether err means the key was absent. errors.Is alone
+// is not enough: olric's ClusterClient maps the wire error back to the
+// ErrKeyNotFound sentinel only when an in-process server has populated its
+// error-prefix registry (olric.New does; a client-only process does not), so
+// in production the error arrives as a plain string and must be matched by
+// message.
+func isKeyNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, olric.ErrKeyNotFound) || err.Error() == olric.ErrKeyNotFound.Error()
 }
 
 // Put will put a value in the cache with a given key and a given timeout
@@ -74,7 +88,7 @@ func (o *DMap) Delete(ctx context.Context, keys ...Key) {
 		strKeys[i] = string(key)
 	}
 	_, err := o.dm.Delete(ctx, strKeys...)
-	if err != nil && err.Error() != olric.ErrKeyNotFound.Error() {
+	if err != nil && !isKeyNotFound(err) {
 		o.log.Debug("olric.Delete: failed to delete keys", "keys", keys, "error", err)
 		o.log.Error("olric.Delete: failed to delete keys", "error", err)
 	}
@@ -83,7 +97,7 @@ func (o *DMap) Delete(ctx context.Context, keys ...Key) {
 // Get will get a value from the cache with a given key
 func (o *DMap) Get(ctx context.Context, key Key) *olric.GetResponse {
 	val, err := o.dm.Get(ctx, string(key))
-	if err != nil && err.Error() != olric.ErrKeyNotFound.Error() {
+	if err != nil && !isKeyNotFound(err) {
 		o.log.Debug("olric.Get: failed to get key", "key", key, "error", err)
 		o.log.Error("olric.Get: failed to get key", "error", err)
 	}
