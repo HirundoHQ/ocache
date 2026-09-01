@@ -1,0 +1,39 @@
+version: "2"
+linters:
+  enable:
+    - asciicheck
+    - dupl
+    - errname
+    - goconst
+    - gocyclo
+    - gosec
+    - misspell
+    - nilerr
+    - perfsprint
+    - revive
+    - unconvert
+  settings:
+    gocyclo:
+      min-complexity: 22
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - dupl
+          - errcheck
+          - goconst
+          - gocyclo
+          - gosec
+        path: _test\.go
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
