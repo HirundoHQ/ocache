@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hirundohq/logging"
 	"github.com/olric-data/olric"
-	"github.com/osiguraj-lako/logging"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/runtime/protoimpl"

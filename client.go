@@ -5,9 +5,9 @@ import (
 	"io"
 	"time"
 
+	"github.com/hirundohq/logging"
 	"github.com/olric-data/olric"
 	"github.com/olric-data/olric/config"
-	"github.com/osiguraj-lako/logging"
 )
 
 type Option func(*Client)

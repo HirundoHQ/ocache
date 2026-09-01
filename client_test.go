@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	client "github.com/osiguraj-lako/ocache"
-	"github.com/osiguraj-lako/ocache/testutil"
+	client "github.com/hirundohq/ocache"
+	"github.com/hirundohq/ocache/testutil"
 )
 
 func TestClient(t *testing.T) {

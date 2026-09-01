@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/go-test/deep"
+	"github.com/hirundohq/ocache"
 	"github.com/olric-data/olric"
 	"github.com/olric-data/olric/config"
-	client "github.com/osiguraj-lako/ocache"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -106,8 +106,8 @@ func getFreePort() (int, error) {
 func AssertCachedValue[T protoreflect.ProtoMessage](
 	ctx context.Context,
 	t *testing.T,
-	cache *client.DMap,
-	cacheKey client.Key,
+	cache *ocache.DMap,
+	cacheKey ocache.Key,
 	expectedResponse protoreflect.ProtoMessage,
 ) {
 	var msg T // Constrained to proto.Message
