@@ -16,11 +16,13 @@ import (
 type lockingFakeDMap struct {
 	olric.DMap
 	lockErr error
+	calls   int
 }
 
 func (f *lockingFakeDMap) Name() string { return "test" }
 
 func (f *lockingFakeDMap) LockWithTimeout(_ context.Context, _ string, _, _ time.Duration) (olric.LockContext, error) {
+	f.calls++
 	return nil, f.lockErr
 }
 
@@ -47,6 +49,19 @@ func TestWithLockMapsSentinelLockNotAcquired(t *testing.T) {
 	err := dm.WithLock(context.Background(), "k", time.Second, time.Millisecond, func(context.Context) error { return nil })
 	if !errors.Is(err, ErrLockNotAcquired) {
 		t.Fatalf("err = %v; want ErrLockNotAcquired", err)
+	}
+}
+
+func TestWithLockGivesUpAfterOneAttemptWhenWaitIsZero(t *testing.T) {
+	fdm := &lockingFakeDMap{lockErr: errors.New("lock not acquired")}
+	dm := &DMap{dm: fdm, log: fake.New(logging.LevelError)}
+
+	err := dm.WithLock(context.Background(), "k", time.Second, 0, func(context.Context) error { return nil })
+	if !errors.Is(err, ErrLockNotAcquired) {
+		t.Fatalf("err = %v; want ErrLockNotAcquired", err)
+	}
+	if fdm.calls != 1 {
+		t.Errorf("LockWithTimeout called %d times; want exactly 1", fdm.calls)
 	}
 }
 

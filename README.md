@@ -129,9 +129,12 @@ if errors.Is(err, ocache.ErrLockNotAcquired) {
 ```
 
 The lock expires after `ttl` even if its holder dies, so pick a `ttl` above
-the function's worst case. Olric locks are advisory — a key with a TTL,
-polled every 10 ms — so use them to avoid duplicate work, never to protect an
-invariant.
+the function's worst case. `ttl` must be at least one millisecond, Olric's
+granularity, or it would never expire; `wait` is served in one-second slices
+so that every `LockWithTimeout` reply stays within the Olric client's 3 s
+read timeout. A caller whose context ends while waiting gets its `ctx.Err()`.
+Olric locks are advisory — a key with a TTL, polled every 10 ms — so use them
+to avoid duplicate work, never to protect an invariant.
 
 ## Expiration Strategies
 
