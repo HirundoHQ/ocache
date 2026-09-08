@@ -109,6 +109,19 @@ func (o *DMap) Get(ctx context.Context, key Key) *olric.GetResponse {
 	return val
 }
 
+// Lookup reads key and returns (nil, false, nil) on a miss but (nil, false,
+// err) on a failure, unlike Get, which returns nil for both.
+func (o *DMap) Lookup(ctx context.Context, key Key) (*olric.GetResponse, bool, error) {
+	val, err := o.dm.Get(ctx, string(key))
+	if err != nil {
+		if isKeyNotFound(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("olric.Get: %w", err)
+	}
+	return val, true, nil
+}
+
 // Flush will invalidate the cache (delete all keys).
 // This is useful when you want to force a refresh of the cache for the given DMap name.
 func (o *DMap) Flush(ctx context.Context) {
