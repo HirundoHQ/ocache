@@ -13,8 +13,7 @@ import (
 // the lock after the wait elapses.
 var ErrLockNotAcquired = errors.New("lock not acquired")
 
-// isLockNotAcquired mirrors isKeyNotFound: a client-only process gets the
-// wire error back as a plain string, not the sentinel.
+// isLockNotAcquired mirrors isKeyNotFound's plain-string fallback.
 func isLockNotAcquired(err error) bool {
 	if err == nil {
 		return false
@@ -22,25 +21,14 @@ func isLockNotAcquired(err error) bool {
 	return errors.Is(err, olric.ErrLockNotAcquired) || err.Error() == olric.ErrLockNotAcquired.Error()
 }
 
-// lockSlice bounds one LockWithTimeout round trip. The server polls for the
-// whole deadline while the client waits for a single reply under its read
-// timeout (3 s by default), and a reply that outlives it is retried, leaving
-// server-side pollers that can take the lock into a dead connection. Waiting
-// in slices keeps every reply inside the read timeout.
+// lockSlice bounds one LockWithTimeout round trip: the Olric client waits
+// for a single reply under its 3 s read timeout, so longer waits are sliced.
 const lockSlice = time.Second
 
-// WithLock runs fn while holding a cluster-wide lock on key. The lock expires
-// after ttl even if the holder dies, so ttl must exceed fn's worst case and
-// must be at least one millisecond (Olric's granularity; below that the lock
-// would never expire). A caller that cannot acquire the lock within wait gets
-// ErrLockNotAcquired and fn does not run; a caller whose ctx ends while
-// waiting gets ctx.Err(). The wait is served in slices of lockSlice so that
-// each reply arrives within the client's read timeout. Unlock failures of any
-// kind (an expired lock, an unreachable cluster) are only logged: the lock
-// then lapses on its own at ttl. A panic in fn still releases the lock. Olric
-// locks are advisory (a key with a TTL, polled every 10 ms): use them to avoid
-// duplicate work, not to protect invariants, and never derive key from a
-// secret — it is logged at Debug.
+// WithLock runs fn under a cluster-wide lock on key that expires after ttl
+// (at least 1 ms, Olric's granularity) even if the holder dies. It returns
+// ErrLockNotAcquired when wait elapses and ctx.Err() when ctx does. Olric locks
+// are advisory: use them to avoid duplicate work, not to protect invariants.
 func (o *DMap) WithLock(ctx context.Context, key Key, ttl, wait time.Duration, fn func(ctx context.Context) error) error {
 	if ttl < time.Millisecond {
 		return fmt.Errorf("olric.LockWithTimeout: ttl %v is below the 1 ms granularity and would never expire", ttl)
@@ -62,9 +50,7 @@ func (o *DMap) WithLock(ctx context.Context, key Key, ttl, wait time.Duration, f
 	return fn(ctx)
 }
 
-// acquire waits up to wait for the lock, one lockSlice at a time, so that no
-// LockWithTimeout reply outlives the client's read timeout. At least one
-// attempt is made even when wait is zero.
+// acquire always makes at least one attempt, even when wait is zero.
 func (o *DMap) acquire(ctx context.Context, key Key, ttl, wait time.Duration) (olric.LockContext, error) {
 	deadline := time.Now().Add(wait)
 	for attempt := 0; ; attempt++ {

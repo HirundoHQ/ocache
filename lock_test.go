@@ -21,8 +21,7 @@ func newServer(t *testing.T) *testutil.OlricServer {
 	return db
 }
 
-// openDMap opens an independent DMap handle on db. Two handles on the same
-// server stand in for two olako-core replicas.
+// Two handles on the same server stand in for two replicas.
 func openDMap(t *testing.T, db *testutil.OlricServer) *ocache.DMap {
 	t.Helper()
 	cl, err := ocache.New(db.Endpoint())
@@ -170,15 +169,13 @@ func TestWithLockExpiresAfterTTL(t *testing.T) {
 	}
 
 	close(release)
-	// a's Unlock finds no lock (it expired); that is logged, not returned.
+	// a's Unlock fails silently: the lock already expired.
 	if err := <-done; err != nil {
 		t.Fatalf("a.WithLock: %v", err)
 	}
 }
 
-// Note: with the slicing loop, an expiring context is noticed at the next
-// slice boundary, so the 300 ms deadline here is observed within about 1.3 s;
-// that is the accepted granularity.
+// ctx is checked at each slice boundary, so this can take up to about 1.3 s.
 func TestWithLockReturnsContextErrorWhileWaiting(t *testing.T) {
 	db := newServer(t)
 	a, b := openDMap(t, db), openDMap(t, db)
