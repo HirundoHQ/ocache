@@ -98,6 +98,41 @@ Creates cache keys from string parameters:
 key := cache.CreateKey("prefix", ocache.WithParams(userID))
 ```
 
+## Miss vs. failure
+
+`Get` returns `nil` both when the key is absent and when the cluster could not
+answer, which suits a read-through cache. When the caller must tell the two
+apart — a shared credential, for example — use `Lookup`:
+
+```go
+val, found, err := dm.Lookup(ctx, key)
+switch {
+case err != nil:   // Olric unreachable: fall back to local state
+case !found:       // key absent or expired: produce the value
+default:           // hit
+}
+```
+
+## Locks
+
+`WithLock` runs a function under a cluster-wide lock, so replicas doing the
+same expensive work (a provider login, say) do it once:
+
+```go
+err := dm.WithLock(ctx, dm.CreateKey("token_lock"), 30*time.Second, 10*time.Second, func(ctx context.Context) error {
+    // at most one caller across the cluster is here at a time
+    return nil
+})
+if errors.Is(err, ocache.ErrLockNotAcquired) {
+    // someone else held it for the whole wait: degrade, do not fail
+}
+```
+
+The lock expires after `ttl` even if its holder dies, so pick a `ttl` above
+the function's worst case. Olric locks are advisory — a key with a TTL,
+polled every 10 ms — so use them to avoid duplicate work, never to protect an
+invariant.
+
 ## Expiration Strategies
 
 ```go
