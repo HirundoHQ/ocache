@@ -109,6 +109,23 @@ func (o *DMap) Get(ctx context.Context, key Key) *olric.GetResponse {
 	return val
 }
 
+// Lookup reads key and tells a miss apart from a failure: (nil, false, nil)
+// when the key is absent, (nil, false, err) when the cluster could not answer.
+// Use it where the caller must react differently to the two — for a shared
+// token an absent key means "log in", an unreachable cache means "use the
+// local copy". Get keeps returning nil for both, which is fine for plain
+// read-through caches.
+func (o *DMap) Lookup(ctx context.Context, key Key) (*olric.GetResponse, bool, error) {
+	val, err := o.dm.Get(ctx, string(key))
+	if err != nil {
+		if isKeyNotFound(err) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("olric.Get: %w", err)
+	}
+	return val, true, nil
+}
+
 // Flush will invalidate the cache (delete all keys).
 // This is useful when you want to force a refresh of the cache for the given DMap name.
 func (o *DMap) Flush(ctx context.Context) {
