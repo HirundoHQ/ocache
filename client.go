@@ -1,6 +1,7 @@
 package ocache
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"time"
@@ -8,18 +9,21 @@ import (
 	"github.com/hirundohq/logging"
 	"github.com/olric-data/olric"
 	"github.com/olric-data/olric/config"
+	"github.com/olric-data/olric/stats"
 )
 
 type Option func(*Client)
 
 type Client struct {
-	c   *olric.ClusterClient
-	log logging.Logger
+	c    *olric.ClusterClient
+	addr string
+	log  logging.Logger
 }
 
 func New(address string, opts ...Option) (*Client, error) {
 	client := &Client{
-		log: logging.New(io.Discard, 0),
+		addr: address,
+		log:  logging.New(io.Discard, 0),
 	}
 
 	for _, opt := range opts {
@@ -70,4 +74,16 @@ func WithClusterClient(clusterClient *olric.ClusterClient) Option {
 	return func(c *Client) {
 		c.c = clusterClient
 	}
+}
+
+// Stats returns the statistics of the node the client was given: per-partition
+// DMap sizes, eviction and hit counters, runtime figures. Olric has no exporter
+// of its own, so this is the only way to watch a DMap against its maxInuse.
+// DMap figures are per partition; sum them for the DMap total.
+func (c *Client) Stats(ctx context.Context) (stats.Stats, error) {
+	st, err := c.c.Stats(ctx, c.addr)
+	if err != nil {
+		return stats.Stats{}, fmt.Errorf("olric.Stats: %w", err)
+	}
+	return st, nil
 }
