@@ -107,3 +107,42 @@ func TestDeleteDoesNotLogErrorOnWrappedKeyNotFound(t *testing.T) {
 
 	assertNoErrorLogs(t, log)
 }
+
+func TestLookupTreatsSentinelKeyNotFoundAsMiss(t *testing.T) {
+	log := fake.New(logging.LevelError)
+	dm := &DMap{
+		dm:  &fakeOlricDMap{getErr: fmt.Errorf("cluster client: %w", olric.ErrKeyNotFound)},
+		log: log,
+	}
+
+	val, found, err := dm.Lookup(context.Background(), "missing")
+	if err != nil {
+		t.Fatalf("Lookup returned error for a miss: %v", err)
+	}
+	if found || val != nil {
+		t.Errorf("Lookup = (%v, %v); want (nil, false) for a miss", val, found)
+	}
+	assertNoErrorLogs(t, log)
+}
+
+func TestLookupTreatsPlainStringKeyNotFoundAsMiss(t *testing.T) {
+	dm := &DMap{dm: &fakeOlricDMap{getErr: errors.New("key not found")}, log: fake.New(logging.LevelError)}
+
+	_, found, err := dm.Lookup(context.Background(), "missing")
+	if err != nil || found {
+		t.Errorf("Lookup = (found=%v, err=%v); want (false, nil) for the wire-string miss", found, err)
+	}
+}
+
+func TestLookupReportsClusterFailure(t *testing.T) {
+	down := errors.New("dial tcp 127.0.0.1:3320: connect: connection refused")
+	dm := &DMap{dm: &fakeOlricDMap{getErr: down}, log: fake.New(logging.LevelError)}
+
+	val, found, err := dm.Lookup(context.Background(), "token")
+	if !errors.Is(err, down) {
+		t.Fatalf("Lookup err = %v; want wrapped %v", err, down)
+	}
+	if found || val != nil {
+		t.Errorf("Lookup = (%v, %v) on failure; want (nil, false)", val, found)
+	}
+}
