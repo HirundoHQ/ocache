@@ -130,6 +130,17 @@ func (o *DMap) Flush(ctx context.Context) {
 	}
 }
 
+// Scan iterates the keys of the DMap whose full name (as CreateKey builds it,
+// DMap name included) matches the regular expression. The caller closes the
+// iterator.
+func (o *DMap) Scan(ctx context.Context, pattern string) (olric.Iterator, error) {
+	it, err := o.dm.Scan(ctx, olric.Match(pattern))
+	if err != nil {
+		return nil, fmt.Errorf("olric.Scan: %w", err)
+	}
+	return it, nil
+}
+
 // FlushKeys will invalidate the cache for all keys that match the given pattern.
 func (o *DMap) FlushKeys(ctx context.Context, pattern string) {
 	i, err := o.dm.Scan(ctx, olric.Match(pattern))

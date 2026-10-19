@@ -136,6 +136,32 @@ read timeout. A caller whose context ends while waiting gets its `ctx.Err()`.
 Olric locks are advisory — a key with a TTL, polled every 10 ms — so use them
 to avoid duplicate work, never to protect an invariant.
 
+## Statistics and key scans
+
+Olric has no Prometheus exporter, so the only way to watch a DMap against its
+`maxInuse` budget is its own statistics. `Stats` returns them for the node the
+client was created with; DMap figures are per partition, so sum them:
+
+```go
+st, err := cl.Stats(ctx)
+var inuse int
+for _, p := range st.Partitions {
+    inuse += p.DMaps["travel"].SlabInfo.Inuse
+}
+// st.DMaps.EvictedTotal grows only when a DMap is over budget
+```
+
+`Scan` iterates keys whose full name (DMap name included, as `CreateKey`
+builds it) matches a regular expression; close the iterator when done:
+
+```go
+it, err := dm.Scan(ctx, "^travel_SelectedOffer_")
+defer it.Close()
+for it.Next() {
+    _ = it.Key()
+}
+```
+
 ## Expiration Strategies
 
 ```go
